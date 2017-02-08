@@ -1,0 +1,116 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use diagnostics;
+use Env;
+
+my $lne;
+my @orbital;
+my @eqn;
+my @temparray;
+my $i=0;
+
+open(INFILE,"<equations.dat") || die "Cannot open equations.dat";
+
+foreach $lne (<INFILE>){
+   if($lne eq "\n"){
+     next;
+   }
+   @temparray=&prepLine("",$lne,'\s+');
+   $orbital[$i]=$temparray[0];
+   $eqn[$i]=$temparray[1];
+   $i++;
+}
+
+&printFile;
+
+
+sub printFile{
+
+  my $j;
+
+  open(OUTFILE,">fitgraphs.vsz") || die "Cannot open fitgraphs.vsz";
+
+  for($j=0;$j<$#orbital+1;$j++){
+
+  print OUTFILE "Add('page', name='$orbital[$j]', autoadd=False)\n";
+  print OUTFILE "To('$orbital[$j]')\n";
+  print OUTFILE "Add('graph', name=u'$orbital[$j]', autoadd=False)\n";
+  print OUTFILE "To(u'$orbital[$j]')\n";
+  print OUTFILE "Add('axis', name='x', autoadd=False)\n";
+  print OUTFILE "To('x')\n";
+  print OUTFILE "Set('label', u'Radial Distance (r)')\n";
+  print OUTFILE "Set('Label/font',u'Times New Roman')\n";
+  print OUTFILE "Set('Label/size',u'14pt')\n";
+  print OUTFILE "Set('TickLabels/font', u'Times New Roman')\n";
+  print OUTFILE "Set('TickLabels/size', u'16pt')\n";
+  print OUTFILE "To('..')\n";
+  print OUTFILE "Add('axis', name='y', autoadd=False)\n";
+  print OUTFILE "To('y')\n";
+  print OUTFILE "Set('label', u'\\chi(r)')\n";
+  print OUTFILE "Set('direction', 'vertical')\n";
+  print OUTFILE "Set('Label/font',u'Times New Roman')\n";
+  print OUTFILE "Set('Label/size',u'14pt')\n";
+  print OUTFILE "Set('TickLabels/font', u'Times New Roman')\n";
+  print OUTFILE "Set('TickLabels/size', u'16pt')\n";
+  print OUTFILE "To('..')\n";
+  print OUTFILE "Add('key', name='key1', autoadd=False)\n";
+  print OUTFILE "To('key1')\n";
+  print OUTFILE "Set('Text/font', u'Arial')\n";
+  print OUTFILE "Set('Text/size', u'12pt')\n";
+  print OUTFILE "Set('horzPosn', 'right')\n";
+  print OUTFILE "Set('vertPosn', 'top')\n";
+  print OUTFILE "Set('horzManual', 0.0)\n";
+  print OUTFILE "Set('vertManual', 0.0)\n";
+  print OUTFILE "To('..')\n";
+  print OUTFILE "Add('function', name=u'zero line', autoadd=False)\n";
+  print OUTFILE "To(u'zero line')\n";
+  print OUTFILE "Set('function', u'0')\n";
+  print OUTFILE "To('..')\n";
+
+  print OUTFILE "Add('function', name='$orbital[$j]', autoadd=False)\n";
+  print OUTFILE "To('$orbital[$j]')\n";
+  print OUTFILE "Set('function', u'$eqn[$j]')\n";
+  print OUTFILE "Set('steps', 1000)\n";
+  print OUTFILE "Set('key', u'$orbital[$j]')\n";
+  print OUTFILE "Set('Line/color', u'darkblue')\n";
+  print OUTFILE "Set('Line/width', u'2pt')\n";
+  print OUTFILE "Set('FillBelow/hide', True)\n";
+  print OUTFILE "To('..')\n";
+  print OUTFILE "To('..')\n";
+  print OUTFILE "To('..')\n";
+
+
+
+  }
+}
+
+
+
+#Subroutine written by Prof. P. Rulis (UMKC).
+sub prepLine
+{
+   # Define passed parameters.
+   my $fileHandle = $_[0];
+   my $line = $_[1];
+   my $splitter = $_[2];
+
+   # Declare local variables.
+   my @values;
+
+   # Read the line if necessary.
+   if ("$fileHandle" ne "")
+      {$line =<$fileHandle>;}
+
+   # Chomp, split, and shift it.
+   chomp $line;
+   @values = split(/$splitter/,$line);
+   if ($values[0] eq "")
+      {shift @values;}
+
+   return @values;
+}
+
+
+
