@@ -174,7 +174,7 @@ def create_veusz_file(mode,atom):
 
     # Make a list of files in the directory. If there isn't
     #  an equations.dat file then don't run.
-    files=' '.join(os.listdir())
+    files=os.listdir()
 
     # If there is an equations.dat file then create the .vsz
     if 'equations.dat' in files:
