@@ -26,7 +26,6 @@ Purpose: The purpose of this script is take in relativistic
 """
 
 
-
 import numpy as np
 import scipy
 import time
@@ -34,43 +33,55 @@ import copy
 import os
 import sys
 import math
+import pandas as pd
+import make_veusz_graph
+import org_radwavefn
+
 from scipy.linalg import lu_solve 
 
 start=time.time()
 
-def printHelp():
-  print "\n====================="
-  print "HELP FOR INTERFIT.PY"
-  print "=====================\n"
-  print "Operation modes:"
-  print "  -shrink rc sig"
-  print "    Performs a shrinking function operation where rc"
-  print "     is the critical radii and sig is the shrinking"
-  print "     parameter.\n"
-  print "           |          2"
-  print "           |    (r-rc) "
-  print "           |    ------ "
-  print "           |         2 "
-  print "           |    2*sig  "
-  print "     s(r)= |1-e         r .leq. rc "
-  print "           |0           r > rc\n"
-  print "     A file (shrink.inf) must be present with a list"
-  print "      of all orbitals and corresponding rc sig in comma"
-  print "      delimited columns.\n\n"
-  print "  -comp 1/2/4"
-  print "    Designates the amount of components to generate"
-  print "     one, two, or four."
-  print "    1: Averages together to large components into a"
-  print "       single orbital."
-  print "       -comp 1"
-  print "    2: Fits only the large components."
-  print "       -comp 2"
-  print "    3: Fits all four components."
-  print "       -comp 4\n"
+#==========================
+# PRINTING FUNCTIONS:
+#==========================
 
+def print_help():
+  print("\n=====================")
+  print("HELP FOR INTERFIT.PY")
+  print("=====================\n")
+  print("Operation modes:")
+  print( "  -shrink rc sig")
+  print( "    Performs a shrinking function operation where rc")
+  print("     is the critical radii and sig is the shrinking")
+  print("     parameter.\n")
+  print("           |          2")
+  print("           |    (r-rc) ")
+  print("           |    ------ ")
+  print("           |         2 ")
+  print("           |    2*sig  ")
+  print("     s(r)= |1-e         r .leq. rc ")
+  print("           |0           r > rc\n")
+  print("     A file (shrink.inf) must be present with a list")
+  print("      of all orbitals and corresponding rc sig in comma")
+  print("      delimited columns.\n\n")
+  print( "  -comp 1/2/4")
+  print("    Designates the amount of components to generate")
+  print("     one, two, or four.")
+  print("    1: Averages together to large components into a")
+  print("       single orbital.")
+  print("       -comp 1")
+  print("    2: Fits only the large components.")
+  print("       -comp 2")
+  print("    3: Fits all four components.")
+  print("       -comp 4\n")
 
-def printLine():
-  print ("==================================================================================")
+def print_line(number_lines):
+  for i in range(number_lines):
+    print("==================================================================================")
+
+def print_callout(callout_text):
+  print_line(1)
+  print(callout_text)
 
 def printStats(MaxA,numberTerms,Weight):
   print(str("%.8E"%MaxA)+"\t"+str(numberTerms[0])+"\t"+str(numberTerms[1])+"\t"+str(numberTerms[2])+"\t"+str(numberTerms[3])+"\t"+str(numberTerms[4])+"\t"+str(Weight)+"\n")
@@ -78,7 +89,7 @@ def printStats(MaxA,numberTerms,Weight):
 def printProgress(minAlpha,maxAlpha,currentA,step):
   perc=((np.float(currentA)-np.float(minAlpha))/(np.float(maxAlpha)-np.float(minAlpha)))*100.0
   if perc%10==0:
-    print str("%.2f"%perc)+"%\t("+str(minAlpha)+"\t- "+str(currentA)+" -\t"+str(maxAlpha)+")"
+    print(str("%.2f"%perc)+"%\t("+str(minAlpha)+"\t- "+str(currentA)+" -\t"+str(maxAlpha)+")")
   
  
 
@@ -126,7 +137,7 @@ def ltolsym(l):
     return "g"
 
 def getMaxAlpha(Z):
-  alphas={'1': '10000.0', '2': '10000.0', '3': '50000.0', '4': '50000.0', '5': '50000.0', '6': '50000.0', '7': '50000.0', '8': '50000.0', '9': '50000.0', '10': '50000.0', '11': '100000.0', '12': '100000.0', '13': '100000.0', '14': '200000.0', '15': '100000.0', '16': '100000.0', '17': '100000.0', '18': '100000.0', '19': '500000.0', '20': '500000.0', '21': '500000.0', '22': '500000.0', '23': '500000.0', '24': '500000.0', '25': '500000.0', '26': '500000.0', '27': '500000.0', '28': '500000.0', '29': '500000.0', '30': '1000000.0', '31': '1000000.0', '32': '1000000.0', '33': '1000000.0', '34': '1000000.0', '35': '1000000.0', '36': '1000000.0', '37': '5000000.0', '38': '5000000.0', '39': '5000000.0', '40': '5000000.0', '41': '5000000.0', '42': '5000000.0', '43': '5000000.0', '44': '5000000.0', '45': '5000000.0', '46': '5000000.0', '47': '5000000.0', '48': '5000000.0', '49': '5000000.0', '50': '5000000.0', '51': '5000000.0', '52': '5000000.0', '53': '5000000.0', '54': '5000000.0', '55': '10000000.0', '56': '10000000.0', '57': '10000000.0', '58': '10000000.0', '59': '10000000.0', '60': '10000000.0', '61': '10000000.0', '62': '10000000.0', '63': '10000000.0', '64': '10000000.0', '65': '10000000.0', '66': '10000000.0', '67': '10000000.0', '68': '10000000.0', '69': '10000000.0', '70': '10000000.0', '71': '50000000.0', '72': '50000000.0', '73': '50000000.0', '74': '50000000.0', '75': '50000000.0', '76': '50000000.0', '77': '50000000.0', '78': '50000000.0', '79': '50000000.0', '80': '50000000.0', '81': '50000000.0', '82': '50000000.0', '83': '50000000.0', '84': '50000000.0', '85': '50000000.0', '86': '50000000.0', '87': '50000000.0', '88': '50000000.0', '89': '50000000.0', '90': '50000000.0', '91': '50000000.0', '92': '50000000.0', '93': '50000000.0', '94': '50000000.0', '95': '50000000.0', '96': '50000000.0', '97': '50000000.0', '98': '50000000.0', '99': '50000000.0', '100': '50000000.0', '101': '50000000.0', '102': '50000000.0', '103': '50000000.0',}
+  alphas={'1': 10000.0, '2': 10000.0, '3': 50000.0, '4': 50000.0, '5': 50000.0, '6': 50000.0, '7': 50000.0, '8': 50000.0, '9': 50000.0, '10': 50000.0, '11': 100000.0, '12': 100000.0, '13': 100000.0, '14': 200000.0, '15': 100000.0, '16': 100000.0, '17': 100000.0, '18': 100000.0, '19': 500000.0, '20': 500000.0, '21': 500000.0, '22': 500000.0, '23': 500000.0, '24': 500000.0, '25': 500000.0, '26': 500000.0, '27': 500000.0, '28': 500000.0, '29': 500000.0, '30': 1000000.0, '31': 1000000.0, '32': 1000000.0, '33': 1000000.0, '34': 1000000.0, '35': 1000000.0, '36': 1000000.0, '37': 5000000.0, '38': 5000000.0, '39': 5000000.0, '40': 5000000.0, '41': 5000000.0, '42': 5000000.0, '43': 5000000.0, '44': 5000000.0, '45': 5000000.0, '46': 5000000.0, '47': 5000000.0, '48': 5000000.0, '49': 5000000.0, '50': 5000000.0, '51': 5000000.0, '52': 5000000.0, '53': 5000000.0, '54': 5000000.0, '55': 10000000.0, '56': 10000000.0, '57': 10000000.0, '58': 10000000.0, '59': 10000000.0, '60': 10000000.0, '61': 10000000.0, '62': 10000000.0, '63': 10000000.0, '64': 10000000.0, '65': 10000000.0, '66': 10000000.0, '67': 10000000.0, '68': 10000000.0, '69': 10000000.0, '70': 10000000.0, '71': 50000000.0, '72': 50000000.0, '73': 50000000.0, '74': 50000000.0, '75': 50000000.0, '76': 50000000.0, '77': 50000000.0, '78': 50000000.0, '79': 50000000.0, '80': 50000000.0, '81': 50000000.0, '82': 50000000.0, '83': 50000000.0, '84': 50000000.0, '85': 50000000.0, '86': 50000000.0, '87': 50000000.0, '88': 50000000.0, '89': 50000000.0, '90': 50000000.0, '91': 50000000.0, '92': 50000000.0, '93': 50000000.0, '94': 50000000.0, '95': 50000000.0, '96': 50000000.0, '97': 50000000.0, '98': 50000000.0, '99': 50000000.0, '100': 50000000.0, '101': 50000000.0, '102': 50000000.0, '103': 50000000.0,}
 
   return alphas[str(Z)]
 
@@ -155,79 +166,6 @@ def parseFileName(filename):
   atomSym=(((filename.split('.'))[0]).split('_'))[0]
   return atomSym,n,k
 
-def readNumericalFile(filename):
-  radial=[]
-  large=[]
-  largedivr=[]
-  neglargedivr=[]
-  small=[]
-  smalldivr=[]
-  negsmalldivr=[]
-  global atomSym
-  atomSym=''
-
-  content=getFileContents(filename)
-  atomSym,n,k=parseFileName(filename)
-  atomNum=getAtomNum(atomSym)
-  numTerms=((content[0]).split())[1]
-  energy=(((content[1]).split())[2]).replace('D','E')
-
-  for x in range(4,len(content)):
-    line=(content[x].strip()).split()
-    radial.append(float(line[0]))
-    large.append(float(line[1]))
-    largedivr.append(float(line[2]))
-    neglargedivr.append(float(line[3]))
-    small.append(float(line[4]))
-    smalldivr.append(float(line[5]))
-    negsmalldivr.append(float(line[6]))
-
-  return int(atomNum),int(n),int(k),int(numTerms)-1,energy,radial,largedivr,neglargedivr,smalldivr,negsmalldivr
-
-
-def getNumericalDesc(numcomp):
-  global Z
-  Z=0
-
-  n=0
-  nmax=0
-  k=0
-  kmax=0
-  nT=0
-  E=0.0
-  lcounts=[]
-  r=[]
-  ldr=[]
-  nldr=[]
-  sdr=[]
-  nsdr=[]
-  K=[]
-  pts=[]
-  R=[]
-  LDR=[]
-  NLDR=[]
-  SDR=[]
-  NSDR=[]
-  flist=[]
-  orblist=[]
-
-
-  flist=getFileList('.dat')
-
-  for i in range(0,len(flist)):
-    Z,n,k,nT,E,r,ldr,nldr,sdr,nsdr=readNumericalFile(flist[i])
-    if n>nmax:
-      nmax=n
-    if np.abs(k)>np.abs(kmax):
-      kmax=k
-      
-    orblist.append(str(n)+"_"+str(k))
-    K.append(k)
-    pts.append(nT)
-    R.append(r)
-    LDR.append(ldr)
-    SDR.append(sdr)
-  return R,LDR,SDR,orblist,nmax,kmax
 
 
 
@@ -327,7 +265,7 @@ def doInterp(R,LDR,SDR):
   tl=[None]*len(r)
   ts=[None]*len(r)
   n=0
-  printLine()
+  print_line(1)
   print ("BEGINNING INTERPOLATION:\nThere are "+str(len(R))+" pairs of orbitals to be interpolated and "+str(len(r))+" points in the new grid.")
 
   # Loop through each pair of radial grid, large divided by r,
@@ -591,14 +529,14 @@ def doSweep(R,B,orbs,lvals,numls):
   impCount=0         # Count number of improvements.
 
   print ("\t\tC  A  L  C  U  L  A  T  I  O  N  S")
-  printLine()
+  print_line(1)
   print("BEGINNING SWEEPING:")
   print("Maximum Alpha Range: "+str(np.int(lM*maxAlpha))+" to "+str(np.int(uM*maxAlpha))+" (Step size: "+str(stepSize)+")")
 
   # If the maximum is g-type
   if maxl==4:
     print("Max. l Quantum Num.: g-type")
-    printLine()
+    print_line(1)
     # Loop over maximum alpha values
     for mA in range(lB,uB,stepSize):
       printProgress(lB,uB,mA,stepSize)
@@ -656,7 +594,7 @@ def doSweep(R,B,orbs,lvals,numls):
 
   elif maxl==3:
     print("Max. l Quantum Num.: f-type")
-    printLine()
+    print_line(1)
     for mA in range(lB,uB,stepSize):
       printProgress(lB,uB,mA,stepSize)
       for sp in range(maxNT,minNT,-1):
@@ -690,7 +628,7 @@ def doSweep(R,B,orbs,lvals,numls):
 
   elif maxl==2:
     print("Max. l Quantum Num.: d-type")
-    printLine()
+    print_line(1)
     for mA in range(lB,uB,stepSize):
       printProgress(lB,uB,mA,stepSize)
       for sp in range(maxNT,minNT,-1):
@@ -722,7 +660,7 @@ def doSweep(R,B,orbs,lvals,numls):
 
   elif maxl==1 or maxl==0:
     print("Max. l Quantum Num.: s- or p-type")
-    printLine()
+    print_line(1)
     for mA in range(lB,uB,stepSize):
       printProgress(lB,uB,mA,stepSize)
       for sp in range(maxNT,minNT,-1):
@@ -745,12 +683,12 @@ def doSweep(R,B,orbs,lvals,numls):
           impCount+=1
         itNum+=1
 
-  printLine()
+  print_line(1)
   print("Max. Alpha\ts\tp\td\tf\tg\tWeight")
   printStats(fAlpha[len(fAlpha)-1],nT,fWght)
   print("Total Iterations: "+str(itNum))
   print("Sweeping Complete: ("+str(time.time()-sweeptime)+")")
-  printLine()
+  print_line(1)
   return fA,fAlpha,fRMSE,nT
 
 
@@ -800,270 +738,164 @@ def writeFunctions(orbitals,lvalues,coeffs,alphas):
   h.close()
 
 
-def parseInput():
-  """
-  This function parses the command line input looking for
-  1) -comp #
-    This specifies how many components there should be
-    to describe the orbital.
+def get_alpha_list(amin,amax,n,mode):
 
-  2) -shrink rc sig
-    This specifies the the critical radii and sigma
-    for the shrinking function.
-  """
+  a=[]
 
-  global shrinkBool
-  global rcshrink
-  global sigshrink
-  global numComps
+  if mode=='geometric':
+    for i in range(1,n+1):
+      r=amin*((float(amax/amin))**((i-1.0)/(n-1.0)))
+      a.append(r)
+    return a
 
-  numComps=0
-  shrinkBool=0
-  rcshrink=0.0
-  sigshrink=0.0
 
-  if len(sys.argv)==1:
-    print "No options were selected. Please try again or -help.\n"
 
-  else:
-    #Check for help
-    if sys.argv[1]=="-help":
-      printHelp()
+def getA(numS,radialGrid,GCoeffs):
+  AMAT=np.zeros((len(radialGrid),numS),dtype="d")
+  for i in range(numS):
+    for j in range(len(radialGrid)):
+      AMAT[j][i]=np.exp(-1.0*GCoeffs[i]*(radialGrid[j]**2.0))
+
+  return AMAT
+
+
+
+def pivotless_lu_decomp(A):
+
+  L=np.zeros((len(A),len(A)))
+  U=copy.deepcopy(A)
+
+  for j in range(len(A)-1):
+    for i in range(j,len(A)-1):
+      tc=(U[i+1][j]/U[j][j])
+      if U[j][j]==0 or tc==0:
+        continue
+      else:
+        U[i+1][:]=U[i+1][:]-tc*U[j][:]
+        L[i+1][j]=tc   
+
+
+
+
+class orbital_fitting:
+
+  def __init__(self):
+    self.apply_shrink=False
+    self.shrink_critical_radius=0.0
+    self.shrink_sigma=0.0
+    self.number_components=0.0
+
+    self.grasp_description=org_radwavefn.atomic_system('isodata', 'rwfn.out')
+
+    self.min_alpha=0.12
+    self.max_alpha=getMaxAlpha(str(self.grasp_description.atomic_info.atomic_number))
+
+    self.fitting_columns=['min_alpha','max_alpha','num_terms','num_s','num_p','num_d','num_f','num_g','weight','RMSE','time']
+    self.fitting_results=pd.DataFrame(columns=self.fitting_columns)
+
+    self.RMSE=0.0
+    self.weight=10.0**10
+    self.number_terms=[0,0,0,0,0]
+
+    self.orb_fit_tolerance=10**-4
+    self.alpha_step_size=np.int(self.max_alpha*0.001)
+
+
+
+
+  def parse_input(self):
+
+    parse_time=time.time()
+
+    if len(sys.argv)==1:
+      print("No options were selected. Please try again or -help.\n")
       sys.exit()
-    #Check for -comp 1/2/4
-    if '-comp' in sys.argv:
-      numComps=np.int(sys.argv[int(sys.argv.index('-comp'))+1])
 
-    #Check for -shrink rc sig
-    if '-shrink' in sys.argv:
-      rcshrink=np.float(sys.argv[int(sys.argv.index('-shrink'))+1])
-      sigshrink=np.float(sys.argv[int(sys.argv.index('-shrink'))+2])
-      shrinkBool=1
+    else:
+      #Check for help
+      if "-help" in sys.argv:
+        print_help()
 
-def orgOrbs(rGs,lFns,sFns,orbNames,nP,nMax,kMax):
-  Fn=[]
-  oL=[]
-  lC=[]
-  tlist=[]
-  maxl=lktol(kMax)
-  maxs=sktol(kMax)
-  numls=[0,0,0,0,0]
-  nm1=""
-  nm2=""
-  nm3=""
-  nm4=""
+      if sys.argv[1]=="-help":
+        print_help()
+        sys.exit()
+      #Check for -comp 1/2/4
+      if '-comp' in sys.argv:
+        self.number_components=np.int(sys.argv[int(sys.argv.index('-comp'))+1])
 
-  orgtime=time.time()
-  print("BEGINNING ORGANIZATION OF ORBITALS:")
+      #Check for -shrink rc sig
+      if '-shrink' in sys.argv:
+        self.shrink_critical_radius=np.float(sys.argv[int(sys.argv.index('-shrink'))+1])
+        self.shrink_sigma=np.float(sys.argv[int(sys.argv.index('-shrink'))+2])
+        self.apply_shrink=True
 
-  # Average together large components into one component and
-  #  assign the corresonding l-values. Ignore small component.
-  if int(numComps)==1:
-    print("One component representation selected.")
-    # Loop over possible l values
-    for j in range(maxl,-1,-1):
-      # Loop over possible n values
-      for i in range(nMax,0,-1):
-        # Get k-values corresponding to the l-values and form
-        #   strings corresponding to orbital names for searching
-        #   in the orbital name list.
-        k1,k2=ltok(j)
-        nm1=str(i)+"_"+str(k1)
-        nm2=str(i)+"_"+str(k2)
-        # Check to see if it's an s-type since s orbitals
-        #  only have one component in single component description.
-        if k1==k2:
-          # Find the orbital name in the list and put the name in the new list,
-          #   append the s-type functions to the new array, add the l-value
-          #   to the list of l-values
-          if nm1 in orbNames:
-            oL.append(str(i)+str(ltolsym(j)))
-            Fn.append(lFns[orbNames.index(nm1)])
-            lC.extend(str(j))
-            numls[j]+=1
-        else:
-          # Find the orbital names in the list and put the name in the new list,
-          #   append the average of functions to the new array, add the l-value
-          #   to the list of l-values
-          if nm1 in orbNames and nm2 in orbNames:
-            oL.append(str(i)+str(ltolsym(j)))
-            lC.extend(str(j))
-            tlist=[]
-            # Loop over the points and average the values.
-            for k in range(nP):
-              tlist.append((lFns[orbNames.index(nm1)][k]+lFns[orbNames.index(nm2)][k])/2.0) 
-            Fn.append(tlist) 
-            numls[j]+=1
-  # Ignore small component and only fit large components. Assign
-  #  corresponding l-values.
-  elif(int(numComps)==2):
-    print("Two component representation selected.")
-    for j in range(maxl,-1,-1):
-      for i in range(nMax,0,-1):
-        # Get k-values corresponding to the l-values and form
-        #   strings corresponding to orbital names for searching
-        #   in the orbital name list.
-        k1,k2=ltok(j)
-        nm1=str(i)+"_"+str(k1)
-        nm2=str(i)+"_"+str(k2)
-
-        #Check to see if the orbital is s-type since there's
-        # only one component in this case
-        if k1==k2:
-          if nm1 in orbNames:
-            oL.append(nm1)
-            Fn.append(lFns[orbNames.index(nm1)])
-            lC.extend(str(j))
-            numls[j]+=1
-        else:
-          if nm1 in orbNames:
-            oL.append(nm1)
-            Fn.append(lFns[orbNames.index(nm1)])
-            lC.extend(str(j))
-            numls[j]+=1
-          if nm2 in orbNames:
-            oL.append(nm2)
-            Fn.append(lFns[orbNames.index(nm2)])
-            lC.extend(str(j))
-            numls[j]+=1
-        
-  # Four component representation.
-  elif(int(numComps)==4):
-    print("Four component representation selected.")
-    # Loop over all l-values
-    for j in range(maxs,-1,-1):
-      # Loop over all n-values
-      for i in range(nMax,0,-1):
-        # Get k-values corresponding to the l-values and form
-        #   strings corresponding to orbital names for searching
-        #   in the orbital name list.
-        sk1,sk2=ltosk(j)
-        lk1,lk2=ltok(j)
-        nm1=str(i)+"_"+str(lk1)
-        nm2=str(i)+"_"+str(lk2)
-        nm3=str(i)+"_"+str(sk1)
-        nm4=str(i)+"_"+str(sk2)
-
-        # Do small components first where now small component
-        #  designation will have s_n_k.
-        if sk1==sk2:
-          if nm3 in orbNames:
-            oL.append("s_"+nm3)
-            Fn.append(sFns[orbNames.index(nm3)])
-            lC.extend(str(j))
-            numls[j]+=1
-        else:
-          if nm3 in orbNames:
-            oL.append("s_"+nm3)
-            Fn.append(sFns[orbNames.index(nm3)])
-            lC.extend(str(j))
-            numls[j]+=1
-          if nm4 in orbNames:
-            oL.append("s_"+nm4)
-            Fn.append(sFns[orbNames.index(nm4)])
-            lC.extend(str(j))
-            numls[j]+=1
-
-        # Do large components where now large components
-        #   designation will be l_n_k.
-        if lk1==lk2:
-          if nm1 in orbNames:
-            oL.append("l_"+nm1)
-            Fn.append(lFns[orbNames.index(nm1)])
-            lC.extend(str(j))
-            numls[j]+=1
-        else:
-          if nm1 in orbNames:
-            oL.append("l_"+nm1)
-            Fn.append(lFns[orbNames.index(nm1)])
-            lC.extend(str(j))
-            numls[j]+=1
-          if nm2 in orbNames:
-            oL.append("l_"+nm2)
-            Fn.append(lFns[orbNames.index(nm2)])
-            lC.extend(str(j))
-            numls[j]+=1
-  
-
-  print ("Organization Complete: ("+str(time.time()-orgtime)+")\n")
-
-  if shrinkBool==1:
-    shrinktime=time.time()
-    print ("BEGINNING SHRINKING:")
-    print ("Critical Radii: "+str(rcshrink))
-    print ("Smoothing Parameter: "+str(sigshrink))
-    # Loop over all functions. We will assume for the moment that
-    #  one set of critical radii and sigma are applied the same to
-    #  all of the orbitals. 
-    for i in range(len(Fn)):
-      for j in range(len(rGs)):
-        if rGs[j] > rcshrink:
-          Fn[i][j]=0.0
-        else:
-          Fn[i][j]=Fn[i][j]*(1-math.exp(-0.5*((rGs[j]-rcshrink)**2.0)/(sigshrink**2.0)))
-          # It make sense to divide here by r^l to for efficiency.
-          #  The else corr. to shrinkBool performs the same division.
-          Fn[i][j]=Fn[i][j]/rGs[j]**np.float(lC[i])
-    print ("Shrink Complete: ("+str(time.time()-shrinktime)+")")
-    printLine()
-  else:
-    # In order for the fitting process to work correctly, we divide each function
-    #  by r^l. 
-    for i in range(len(oL)):
-      for j in range(nP):
-        Fn[i][j]=Fn[i][j]/rGs[j]**np.float(lC[i])
-    printLine()
-
-  return Fn,oL,lC,numls
+    print("  Parsing Input Complete:\t"+str('%.8E'%(time.time()-parse_time))+"s. / "+str('%.8E'%(time.time()-start))+"s.")
 
 
-def setUpCalc():
-  # Check if orbital files (*.dat) are present:
-  if len(getFileList('.dat'))==0:
-    print "No orbital files found.\n"
-    sys.exit()
+  def organize_orbitals(self):
+    organize_time=time.time()
 
-  else:
-    printLine()
-    print ("\t\tS  E  T  U  P    O  R  B  I  T  A  L  S")
+    if self.number_components==1:
+      self.grasp_description.orbital_info.single_component()
+    elif self.number_components==2:
+      self.grasp_description.orbital_info.two_component()
+    elif self.number_components==4:
+      self.grasp_description.orbital_info.four_component()
 
-    #Parse the input from the command line to find out how many components
-    # and if shrinking exists
-    parseInput()
+    if self.apply_shrink:
+      shrinking_time=time.time()      
+      self.grasp_description.orbital_info.apply_shrinking_function(self.shrink_critical_radius,self.shrink_sigma)
+      print("  Shrinking Orbitals Complete:\t"+str('%.8E'%(time.time()-shrinking_time))+"s. / "+str('%.8E'%(time.time()-start))+"s.")
+    else:
+      for i in range(len(self.grasp_description.orbital_info.fitting_l_list)):
+        for j in range(len(self.grasp_description.orbital_info.interpolated_radial_grid)):
+          self.grasp_description.orbital_info.fitting_functions[i][j]=self.grasp_description.orbital_info.fitting_functions[i][j]/self.grasp_description.orbital_info.interpolated_radial_grid[j]**np.float(self.grasp_description.orbital_info.fitting_l_list[i])
 
-    #Pull in the numerical data from the .dat files in the directory
-    radGrid,lDivR,sDivR,orbNames,nm,km=getNumericalDesc(numComps)
+    print("  Organizing Orbitals Complete:\t"+str('%.8E'%(time.time()-organize_time))+"s. / "+str('%.8E'%(time.time()-start))+"s.")
 
-    #Interpolate all orbitals to be on the same grid.
-    rInt,ldrInt,sdrInt=doInterp(radGrid,lDivR,sDivR)
 
-    #Organize the orbitals into the required order and divide out
-    # r^l.
-    Fn,oL,lC,numL=orgOrbs(rInt,ldrInt,sdrInt,orbNames,len(rInt),nm,km)
-
-  return rInt,Fn,oL,lC,numL
+  def setup_calculation(self):
+    calc_time=time.time()
+    print(' Calculation Setup:')
+    self.parse_input()
+    self.organize_orbitals()
+    print(" Calculation Setup Complete:\t"+str('%.8E'%(time.time()-calc_time))+"s. / "+str('%.8E'%(time.time()-start))+"s.")
 
 #==========================
 # PROGRAM OPERATIONS:      
 #==========================
 
+if __name__=="__main__":
+  print_line(1)
+  print_callout("\t\tI N T E R F I T    F I T T I N G    P R O G R A M")
+  print_line(1)
 
 
+  element_system=orbital_fitting()
 
-# Set up the orbitals for calculation
-radialGrid,functionVals,orbList,lCounts,numLV=setUpCalc()
+  element_system.setup_calculation()
 
-# Perform parameter sweep:
-coeffVals,alphaList,RMSE,numTerms=doSweep(radialGrid,functionVals,orbList,lCounts,numLV)
+  print(np.shape(np.array(element_system.grasp_description.orbital_info.fitting_functions,dtype='float')))
+  print(np.shape(np.transpose(np.array(element_system.grasp_description.orbital_info.fitting_functions,dtype='float'))))
 
-# Print out the values
-print ("Orbital\tl\tRMSE")
-for i in range(len(orbList)):
-  print(str(orbList[i])+"\t"+str(lCounts[i])+"\t"+str("%.8E"%RMSE[i]))
+  print(np.shape(np.array(element_system.grasp_description.orbital_info.interpolated_radial_grid)))
+  print(np.shape(np.transpose(np.array([element_system.grasp_description.orbital_info.interpolated_radial_grid]))))
+  '''
+  # Set up the orbitals for calculation
+  radialGrid,functionVals,orbList,lCounts,numLV=setUpCalc()
 
-graphFunctions(orbList,lCounts,coeffVals,alphaList)
-writeFunctions(orbList,lCounts,coeffVals,alphaList)
+  # Perform parameter sweep:
+  coeffVals,alphaList,RMSE,numTerms=doSweep(radialGrid,functionVals,orbList,lCounts,numLV)
 
-printLine()
-print ("Total Time: "+str(time.time()-start)+"s.")
-printLine()
+  # Print out the values
+  print ("Orbital\tl\tRMSE")
+  for i in range(len(orbList)):
+    print(str(orbList[i])+"\t"+str(lCounts[i])+"\t"+str("%.8E"%RMSE[i]))
+
+  graphFunctions(orbList,lCounts,coeffVals,alphaList)
+  writeFunctions(orbList,lCounts,coeffVals,alphaList)
+  '''
+ 
+  print_callout("Total Time: "+str(time.time()-start)+"s.")
+  print_line(1)
+  print_line(1)
