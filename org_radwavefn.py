@@ -172,6 +172,7 @@ class orbital_file:
       self.interpolated_nsdivr_components.append([-1*scr for scr in self.interpolated_sdivr_components[i]])
 
   def single_component(self):
+    self.fitting_max_l=self.max_l
     for j in range(self.max_l,-1,-1):
       for i in range(self.max_n,0,-1):
         if ltok(j)[0]==ltok(j)[1]:
@@ -190,6 +191,7 @@ class orbital_file:
 
   
   def two_component(self):
+    self.fitting_max_l=self.max_l
     for j in range(self.max_l,-1,-1):
       for i in range(self.max_n,0,-1):
         if ltok(j)[0]==ltok(j)[1]:
@@ -212,6 +214,7 @@ class orbital_file:
             self.fitting_l_list.append(j)
 
   def four_component(self):
+    self.fitting_max_l=self.max_small_l
     for j in range(self.max_small_l,-1,-1):
       for i in range(self.max_n,0,-1):
 
@@ -266,8 +269,6 @@ class orbital_file:
           self.fitting_functions[i][j]=self.fitting_functions[i][j]/self.interpolated_radial_grid[j]**np.float(self.fitting_l_list[i])
 
 
-
-
   def __init__(self,fname):
     self.num_orbitals=0         # Number of orbitals in the system.
     self.n_qnums=[]             # List of principal quantum numbers.
@@ -299,6 +300,7 @@ class orbital_file:
     self.interpolated_nldivr_components=[]
     self.interpolated_nsdivr_components=[]
 
+    self.fitting_max_l=0
     self.fitting_orbital_names=[]
     self.fitting_functions=[]
     self.fitting_lvals=[0,0,0,0,0]

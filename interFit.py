@@ -36,6 +36,7 @@ import math
 import pandas as pd
 import make_veusz_graph
 import org_radwavefn
+import plotly.express as px
 
 from scipy.linalg import lu_solve 
 
@@ -136,7 +137,7 @@ def ltolsym(l):
   elif l==4:
     return "g"
 
-def getMaxAlpha(Z):
+def get_max_alpha(Z):
   alphas={'1': 10000.0, '2': 10000.0, '3': 50000.0, '4': 50000.0, '5': 50000.0, '6': 50000.0, '7': 50000.0, '8': 50000.0, '9': 50000.0, '10': 50000.0, '11': 100000.0, '12': 100000.0, '13': 100000.0, '14': 200000.0, '15': 100000.0, '16': 100000.0, '17': 100000.0, '18': 100000.0, '19': 500000.0, '20': 500000.0, '21': 500000.0, '22': 500000.0, '23': 500000.0, '24': 500000.0, '25': 500000.0, '26': 500000.0, '27': 500000.0, '28': 500000.0, '29': 500000.0, '30': 1000000.0, '31': 1000000.0, '32': 1000000.0, '33': 1000000.0, '34': 1000000.0, '35': 1000000.0, '36': 1000000.0, '37': 5000000.0, '38': 5000000.0, '39': 5000000.0, '40': 5000000.0, '41': 5000000.0, '42': 5000000.0, '43': 5000000.0, '44': 5000000.0, '45': 5000000.0, '46': 5000000.0, '47': 5000000.0, '48': 5000000.0, '49': 5000000.0, '50': 5000000.0, '51': 5000000.0, '52': 5000000.0, '53': 5000000.0, '54': 5000000.0, '55': 10000000.0, '56': 10000000.0, '57': 10000000.0, '58': 10000000.0, '59': 10000000.0, '60': 10000000.0, '61': 10000000.0, '62': 10000000.0, '63': 10000000.0, '64': 10000000.0, '65': 10000000.0, '66': 10000000.0, '67': 10000000.0, '68': 10000000.0, '69': 10000000.0, '70': 10000000.0, '71': 50000000.0, '72': 50000000.0, '73': 50000000.0, '74': 50000000.0, '75': 50000000.0, '76': 50000000.0, '77': 50000000.0, '78': 50000000.0, '79': 50000000.0, '80': 50000000.0, '81': 50000000.0, '82': 50000000.0, '83': 50000000.0, '84': 50000000.0, '85': 50000000.0, '86': 50000000.0, '87': 50000000.0, '88': 50000000.0, '89': 50000000.0, '90': 50000000.0, '91': 50000000.0, '92': 50000000.0, '93': 50000000.0, '94': 50000000.0, '95': 50000000.0, '96': 50000000.0, '97': 50000000.0, '98': 50000000.0, '99': 50000000.0, '100': 50000000.0, '101': 50000000.0, '102': 50000000.0, '103': 50000000.0,}
 
   return alphas[str(Z)]
@@ -504,7 +505,7 @@ This function performs a sweep over the number of terms in
 def doSweep(R,B,orbs,lvals,numls):
   sweeptime=time.time()  # Start the sweeping clock
   minAlpha=0.12          # This comes from OLCAO standard (numerical stability)
-  maxAlpha=np.float(getMaxAlpha(Z)) #Get the OLCAO stand. maximum alpha
+  maxAlpha=np.float(get_max_alpha(Z)) #Get the OLCAO stand. maximum alpha
   stepSize=np.int(maxAlpha*0.01)    #Calculate the stepsize
   cA=[]              # Current list of coefficients
   fA=[]              # Best list of coefficients
@@ -697,6 +698,8 @@ def doSweep(R,B,orbs,lvals,numls):
 #==========================
 
 
+
+
 def graphFunctions(orbitals,lvalues,coeffs,alphas):
   q=open('equations.dat','w')
   temptext=""
@@ -738,10 +741,15 @@ def writeFunctions(orbitals,lvalues,coeffs,alphas):
   h.close()
 
 
+
+
+# The function returns a geometic series of exponental
+#  coefficients.
 def get_alpha_list(amin,amax,n,mode):
 
   a=[]
-
+  # If the mode passed is geometric, create a list from
+  #  amin to amax with n number of terms.
   if mode=='geometric':
     for i in range(1,n+1):
       r=amin*((float(amax/amin))**((i-1.0)/(n-1.0)))
@@ -749,30 +757,42 @@ def get_alpha_list(amin,amax,n,mode):
     return a
 
 
+# Function to create A matrix for AX=B
+def get_A(numS,radialGrid,GCoeffs):
 
-def getA(numS,radialGrid,GCoeffs):
   AMAT=np.zeros((len(radialGrid),numS),dtype="d")
-  for i in range(numS):
-    for j in range(len(radialGrid)):
-      AMAT[j][i]=np.exp(-1.0*GCoeffs[i]*(radialGrid[j]**2.0))
+
+  for j in range(numS):
+    for i in range(len(radialGrid)):
+      AMAT[i,j]=np.exp(-1.0*GCoeffs[j]*(radialGrid[i]**2.0))
 
   return AMAT
 
 
-
+# Function to do a pivotless LU decomposition for scipy's
+#  lu_solve routine.
 def pivotless_lu_decomp(A):
 
-  L=np.zeros((len(A),len(A)))
+  dim=np.shape(A)[0]
+
+  L=np.zeros((dim,dim),dtype="d")
   U=copy.deepcopy(A)
 
-  for j in range(len(A)-1):
-    for i in range(j,len(A)-1):
-      tc=(U[i+1][j]/U[j][j])
-      if U[j][j]==0 or tc==0:
+  for j in range(dim-1):
+    for i in range(j,dim-1):
+      tc=(U[i+1,j]/U[j,j])
+      if U[j,j]==0 or tc==0:
         continue
       else:
-        U[i+1][:]=U[i+1][:]-tc*U[j][:]
-        L[i+1][j]=tc   
+        U[i+1,:]=U[i+1,:]-tc*U[j,:]
+        L[i+1,j]=tc
+
+        # Adding this in to make truly upper triangular
+        if U[i+1,j]<=1e-13 and U[i+1,j]>=-1e-13:
+          U[i+1,j]=0.0
+
+  return L+U
+
 
 
 
@@ -783,24 +803,29 @@ class orbital_fitting:
     self.apply_shrink=False
     self.shrink_critical_radius=0.0
     self.shrink_sigma=0.0
-    self.number_components=0.0
+    self.number_components=0
 
     self.grasp_description=org_radwavefn.atomic_system('isodata', 'rwfn.out')
 
     self.min_alpha=0.12
-    self.max_alpha=getMaxAlpha(str(self.grasp_description.atomic_info.atomic_number))
+    self.max_alpha=get_max_alpha(str(self.grasp_description.atomic_info.atomic_number))
 
-    self.fitting_columns=['min_alpha','max_alpha','num_terms','num_s','num_p','num_d','num_f','num_g','weight','RMSE','time']
-    self.fitting_results=pd.DataFrame(columns=self.fitting_columns)
+    self.fitting_columns=['min_alpha','max_alpha','num_terms','num_s','num_p','num_d','num_f','num_g','weight','total_RMSE','RMSE','time']
+    self.fitting_results=[]
 
-    self.RMSE=0.0
-    self.weight=10.0**10
+    self.RMSE=1E100
+    self.weight_factors=[1,3,5,7,9]
+    self.weight=1E100
+    self.fits=[]
     self.number_terms=[0,0,0,0,0]
+    self.fitted_max_alpha=0
 
     self.orb_fit_tolerance=10**-4
     self.alpha_step_size=np.int(self.max_alpha*0.001)
 
-
+    self.loop_max_alpha=np.arange(0.3*self.max_alpha,20*self.max_alpha+self.alpha_step_size,self.alpha_step_size)
+    self.max_num_terms=25
+    self.min_num_terms=7
 
 
   def parse_input(self):
@@ -815,10 +840,9 @@ class orbital_fitting:
       #Check for help
       if "-help" in sys.argv:
         print_help()
-
-      if sys.argv[1]=="-help":
-        print_help()
-        sys.exit()
+        if sys.argv[1]=="-help":
+          print_help()
+          sys.exit()
       #Check for -comp 1/2/4
       if '-comp' in sys.argv:
         self.number_components=np.int(sys.argv[int(sys.argv.index('-comp'))+1])
@@ -849,7 +873,7 @@ class orbital_fitting:
     else:
       for i in range(len(self.grasp_description.orbital_info.fitting_l_list)):
         for j in range(len(self.grasp_description.orbital_info.interpolated_radial_grid)):
-          self.grasp_description.orbital_info.fitting_functions[i][j]=self.grasp_description.orbital_info.fitting_functions[i][j]/self.grasp_description.orbital_info.interpolated_radial_grid[j]**np.float(self.grasp_description.orbital_info.fitting_l_list[i])
+          self.grasp_description.orbital_info.fitting_functions[i][j]=self.grasp_description.orbital_info.fitting_functions[i][j]/(self.grasp_description.orbital_info.interpolated_radial_grid[j]**np.float(self.grasp_description.orbital_info.fitting_l_list[i]))
 
     print("  Organizing Orbitals Complete:\t"+str('%.8E'%(time.time()-organize_time))+"s. / "+str('%.8E'%(time.time()-start))+"s.")
 
@@ -860,6 +884,200 @@ class orbital_fitting:
     self.parse_input()
     self.organize_orbitals()
     print(" Calculation Setup Complete:\t"+str('%.8E'%(time.time()-calc_time))+"s. / "+str('%.8E'%(time.time()-start))+"s.")
+
+
+
+
+  def get_prefactor_coefficients(self,LU_matrix,A_matrix,AT_matrix,B_matrix,num_terms,alpha_list):
+    prefactor_time=time.time()
+
+
+    alphas=copy.deepcopy(alpha_list)
+    A=copy.deepcopy(A_matrix)
+    ATA=copy.deepcopy(LU_matrix)
+    AT=copy.deepcopy(AT_matrix)
+    functions=copy.deepcopy(B_matrix)
+    num_orbitals=copy.deepcopy(self.grasp_description.orbital_info.fitting_lvals)
+
+    RMSE=[]
+
+
+    #print(self.grasp_description.orbital_info.fitting_lvals)
+
+    function_number_terms=[]
+
+    for l in self.grasp_description.orbital_info.fitting_l_list:
+
+      function_number_terms.append(num_terms[l])
+
+    AT_B=np.zeros((len(alphas),len(function_number_terms)),dtype="d")
+
+    for j in range(len(function_number_terms)):
+      for i in range(function_number_terms[j]):
+        AT_B[i,j]=np.dot(AT[i,:],functions[:,j])
+
+
+
+    coefficient_matrix=np.zeros((len(alphas),len(function_number_terms)),dtype="d") 
+
+    for i in range(len(num_orbitals)-1,-1,-1):
+      if num_orbitals[i]!=0:
+        x=num_terms[i]
+        y1=sum(num_orbitals[i:])-num_orbitals[i]
+        y2=y1+num_orbitals[i]
+        PIV=np.arange(x)
+
+        coefficient_matrix[:x,y1:y2]=scipy.linalg.lu_solve((ATA[:x,:x],PIV),AT_B[:x,y1:y2])
+
+    RMSE=[0]*len(function_number_terms)
+    #testMat=np.dot(amat,coeffs)
+    RM=np.dot(A,coefficient_matrix)-functions
+
+    
+    '''
+    with open('RM_matrix.txt','a') as f:
+      matshape=np.shape(RM)
+
+      for i in range(matshape[0]):
+        for j in range(matshape[1]):
+          f.write(str('%.1E'%RM[i,j])+" ")
+        f.write('\n')
+      f.write('\n\n')
+    '''
+    for j in range(len(function_number_terms)):
+      for i in range(num_terms[0]):
+        RMSE[j]+=RM[i,j]**2.0
+      RMSE[j]=np.sqrt(RMSE[j])
+
+    total_RMSE=0.0
+
+    for i in range(len(RMSE)):
+      total_RMSE+=self.weight_factors[self.grasp_description.orbital_info.fitting_l_list[i]]*RMSE[i]
+
+    #print('%.8E'%total_RMSE)
+
+    return (coefficient_matrix,total_RMSE,RMSE,time.time()-prefactor_time)
+
+
+
+
+  def fitting_procedure(self):
+    sweep_time=time.time()
+
+    best_weight=self.weight
+    current_weight=0.0
+
+    best_RMSE=self.RMSE
+    current_RMSE=0.0
+    total_RMSE=0.0
+    
+    convergence_reached=False
+
+    current_num_terms=[]
+    best_num_terms=[]
+
+    orbital_RMSEs=[]
+
+    itct=0
+
+
+
+    print_line(1)
+    print(' Fitting Procedure:')
+    print_line(1)
+
+    if self.grasp_description.orbital_info.fitting_max_l==4:
+      print('Fitted Orbitals: s,p,d,f,g')
+
+    elif self.grasp_description.orbital_info.fitting_max_l==3:
+      print('Fitted Orbitals: s,p,d,f')
+      print('Number of Orbitals: s:'+str(self.grasp_description.orbital_info.fitting_lvals[0])+" p:"+str(self.grasp_description.orbital_info.fitting_lvals[1])+" d:"+str(self.grasp_description.orbital_info.fitting_lvals[2])+" f:"+str(self.grasp_description.orbital_info.fitting_lvals[3]))
+
+      while(not convergence_reached):
+        for maximum_alpha in self.loop_max_alpha:
+
+          itct=0
+          for sp in range(self.max_num_terms,self.min_num_terms,-1):
+
+
+            fit_loop_time=time.time()
+
+            if itct>=5:
+              continue
+
+            alphas=get_alpha_list(self.min_alpha,maximum_alpha,sp,'geometric')
+            A=get_A(sp, self.grasp_description.orbital_info.interpolated_radial_grid,alphas)
+            AT=np.transpose(A)
+            ATA=np.dot(AT,A)
+            LU=pivotless_lu_decomp(ATA)
+            B=np.transpose(np.matrix(copy.deepcopy(self.grasp_description.orbital_info.fitting_functions)))
+
+            for d in range(sp,self.min_num_terms,-1):
+              if itct>=5:
+                break
+
+              for f in range(d,self.min_num_terms,-1):
+                if itct>=5:
+                  break
+                
+
+                
+
+                current_weight=7*f+5*d+4*sp
+
+                if current_weight > best_weight:
+                  continue
+
+                current_num_terms=[sp,sp,d,f,0]
+
+                coefficients,total_RMSE,current_RMSE,fit_loop_time=self.get_prefactor_coefficients(LU,A,AT,B,current_num_terms,alphas)
+
+
+                orbital_RMSEs.append(current_RMSE)
+
+                
+                if total_RMSE < best_RMSE or abs(total_RMSE - best_RMSE) <= self.orb_fit_tolerance:
+                  if round((maximum_alpha/max(self.loop_max_alpha))*100,2)%20==0:
+                    print(str('%.2f'%((maximum_alpha/max(self.loop_max_alpha))*100))+'%',maximum_alpha,max(self.loop_max_alpha),sp,d,f,'%.5E'%total_RMSE)
+                  best_weight=current_weight
+                  best_RMSE=total_RMSE
+                  self.fitted_max_alpha=maximum_alpha
+                  self.number_terms=current_num_terms
+                  itct=0
+                else:
+                  itct+=1
+
+                
+                #'min_alpha','max_alpha','num_terms','num_s','num_p','num_d','num_f','num_g','weight','RMSE','time'
+
+
+
+                self.fits.append([0.12,maximum_alpha,sp,sp,sp,d,f,0,current_weight,total_RMSE,current_RMSE,time.time()-fit_loop_time])
+
+
+        orb_frame_RMSE=pd.DataFrame(data=orbital_RMSEs,columns=self.grasp_description.orbital_info.fitting_orbital_names)
+        orb_frame_RMSE.to_csv('RMSE.csv',index=False)
+        self.fitting_results=pd.DataFrame(data=self.fits,columns=self.fitting_columns)
+
+        fig=px.box(self.fitting_results, x="max_alpha", y="total_RMSE", color="weight",points="all")
+        fig.show()
+
+
+        print(self.fitting_results)
+        convergence_reached=True
+    elif self.grasp_description.orbital_info.fitting_max_l==2:
+      print('Fitted Orbitals: s,p,d')
+    elif self.grasp_description.orbital_info.fitting_max_l==1 or self.grasp_description.orbital_info.fitting_max_l==0:
+      print('Fitted Orbitals: s,p')
+
+
+
+
+    print(" Fitting Orbitals Complete:\t"+str('%.8E'%(time.time()-sweep_time))+"s. / "+str('%.8E'%(time.time()-start))+"s.")
+
+
+
+
 
 #==========================
 # PROGRAM OPERATIONS:      
@@ -875,11 +1093,8 @@ if __name__=="__main__":
 
   element_system.setup_calculation()
 
-  print(np.shape(np.array(element_system.grasp_description.orbital_info.fitting_functions,dtype='float')))
-  print(np.shape(np.transpose(np.array(element_system.grasp_description.orbital_info.fitting_functions,dtype='float'))))
-
-  print(np.shape(np.array(element_system.grasp_description.orbital_info.interpolated_radial_grid)))
-  print(np.shape(np.transpose(np.array([element_system.grasp_description.orbital_info.interpolated_radial_grid]))))
+  element_system.fitting_procedure()
+  
   '''
   # Set up the orbitals for calculation
   radialGrid,functionVals,orbList,lCounts,numLV=setUpCalc()
@@ -896,6 +1111,6 @@ if __name__=="__main__":
   writeFunctions(orbList,lCounts,coeffVals,alphaList)
   '''
  
-  print_callout("Total Time: "+str(time.time()-start)+"s.")
+  print_callout("Total Time: "+str('%.8E'%(time.time()-start))+"s.")
   print_line(1)
   print_line(1)
